@@ -1,48 +1,19 @@
 #include <iostream>
 #include <map>
 #include <set>
-#include <list>
 #include <cmath>
 #include <ctime>
 #include <deque>
 #include <queue>
 #include <stack>
 #include <limits>
-#include <vector>
 #include <numeric>
 #include <algorithm>
 #include <cstdint>
-#include <format>
 #include <memory>
 #include <unordered_map>
 
 //NOTE: Order Book Levels Info object to represent aggregate internal state of order book. Could be useful for testing and maybe market dissemination
-
-enum class OrderType
-{
-    GoodTillCancel,
-    FillAndKill 
-};
-
-enum class Side
-{
-    Buy, 
-    Sell
-}; 
-
-//Alias integers for clearer typing
-using Price = std::int32_t;
-using Quantity = std::uint32_t; 
-using OrderId = std::uint64_t; 
-
-//Levels are made up of price and quantity, used in public API's to get state of the orderbook
-struct LevelInfo
-{
-    Price price_; 
-    Quantity quantity_; 
-}; 
-
-using LevelInfos = std::vector<LevelInfo>; 
 
 class OrderbookLevelInfos
 {
@@ -60,106 +31,6 @@ private:
     LevelInfos asks_; 
 };
 
-class Order
-{
-public: 
-    Order(OrderType orderType, OrderId orderId, Side side, Price price, Quantity quantity)
-    : orderType_ { orderType }
-    , orderId_ { orderId }
-    , side_ { side }
-    , price_ { price }
-    , initialQuantity_ { quantity }
-    , remainingQuantity_ { quantity }
-    { }
-
-    OrderType GetOrderType() const { return orderType_; }
-    OrderId GetOrderId() const { return orderId_; }
-    Side GetSide() const { return side_; }
-    Price GetPrice() const { return price_; }
-    Quantity GetInitialQuantity() const { return initialQuantity_; }
-    Quantity GetRemainingQuantity() const { return remainingQuantity_; }      
-    Quantity GetFilledQuantity() const { return GetInitialQuantity() - GetFilledQuantity(); }
-
-    bool IsFilled() const { return GetRemainingQuantity() == 0; }
-
-    void Fill(Quantity quantity){
-        if (quantity > GetRemainingQuantity())
-            throw std::logic_error( 
-                std::format("Impossible for Order ({}) to be filled for more than its remining quantity.", GetOrderId()) 
-            );
-    
-        remainingQuantity_ -= quantity;
-    }
-
-private: 
-    OrderType orderType_;
-    OrderId orderId_; 
-    Side side_; 
-    Price price_; 
-    Quantity initialQuantity_; 
-    Quantity remainingQuantity_; 
-};
-
-//Smart pointer: 
-//Automatic memory management, Reference counting, Thread safe reference count
-
-//Stored in orders dictionary and can be in bids and asks
-using OrderPointer = std::shared_ptr<Order>; //Smart pointer? 
-using OrderPointers = std::list<OrderPointer>; //Might want to use a vector for optimization
-
-// //Adding support for modifying order to change side
-class OrderModify
-{
-public: 
-    OrderModify(OrderId orderId, Side side, Price price, Quantity quantity)
-    : orderId_{orderId}
-    , price_{price}
-    , side_{side}
-    , quantity_{quantity}
-    {}
-
-    OrderId GetOrderId() const {return orderId_;} 
-    Price GetPrice() const {return price_;}
-    Side GetSide() const {return side_;}
-    Quantity GetQuantity() const {return quantity_;}
-
-    //Only two order types are Fill and Kill and GTC. Can only modify GTC, but might want to support other order types. 
-    OrderPointer ToOrderPointer(OrderType type) const
-    {
-        return std::make_shared<Order>(type, GetOrderId(), GetSide(), GetPrice(), GetQuantity());
-    }
-
-private: 
-    OrderId orderId_; 
-    Price price_; 
-    Side side_; 
-    Quantity quantity_; 
-}; 
-
-struct TradeInfo
-{
-    OrderId orderId_; 
-    Price price_; 
-    Quantity quantity_; 
-}; 
-
-class Trade
-{
-public: 
-    Trade(const TradeInfo& bidTrade, const TradeInfo& askTrade)
-        : bidTrade_{bidTrade}
-        , askTrade_{askTrade}
-    {}
-
-    const TradeInfo& GetBidTrade() const {return bidTrade_;}
-    const TradeInfo& GetAskTrade() const {return askTrade_;}
-
-private: 
-    TradeInfo bidTrade_; 
-    TradeInfo askTrade_; 
-};
-
-using Trades = std::vector<Trade>; 
 
 class Orderbook
 {
